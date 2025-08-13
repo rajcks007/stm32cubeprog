@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: stm32cubeprog
-Version: 0.1.0
+Version: 0.1.1
 Summary: Python wrapper + CLI for STM32CubeProgrammer
 Author: raj_cks
 Project-URL: Homepage, https://github.com/rajcks007/stm32cubeprog

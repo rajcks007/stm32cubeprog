@@ -482,7 +482,6 @@ class CubeProgCLI:
         """Read device info / option bytes (raw CLI output)."""
         args: List[str] = []
         args += self._connect_args(**connect_kwargs)
-        args += ["-i"]
         _, out, _ = self._run(args, timeout=timeout, live=live)
         return out
 
