@@ -1,44 +1,15 @@
-"""
-import subprocess
+from __future__ import annotations
 import os
-
-cli_path = "C:\\Program Files\\STMicroelectronics\\STM32Cube\\STM32CubeProgrammer\\bin\\STM32_Programmer_CLI.exe"
-firmware = "C:\\Users\\rchoksi\\Project\\logger.bin"
-
-if not os.path.isfile(cli_path):
-    raise FileNotFoundError(f"CLI not found: {cli_path}")
-
-if not os.path.isfile(firmware):
-    raise FileNotFoundError(f"Firmware not found: {firmware}")
-
-cmd = [
-    cli_path,
-    "-c", "port=SWD", "freq=4000",                      # -c = connect options (e.g., SWD, USB, UART)
-    "-w", firmware, "0x08000000",                       # -w = write firmware to flash at specified address, 0x08000000 = start address in flash
-    "-v", "-rst"                                        # -v = verify after writing, -rst = reset after programming
-]
-
-try:
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    print("STDOUT:", result.stdout)
-    print("STDERR:", result.stderr)
-except FileNotFoundError:
-    print(f"File not found when trying to execute: {cmd[0]}")
-    raise
-"""
-
-from __future__ import annotations                          # noqa: E402
-import os                                                   # noqa: E402
-import sys                                                  # noqa: E402
-import shlex                                                # noqa: E402
-import platform                                             # noqa: E402
-import subprocess                                           # noqa: E402
-from dataclasses import dataclass                           # noqa: E402
-from typing import List, Optional, Tuple, Iterable          # noqa: E402
-from pathlib import Path                                    # noqa: E402
-import re                                                   # noqa: E402
-import threading                                            # noqa: E402
-from typing import Callable                                 # noqa: E402
+import sys
+import shlex
+import platform
+import subprocess
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Iterable
+from pathlib import Path
+import re
+import threading
+from typing import Callable
 
 
 class CubeProgError(Exception):
@@ -347,12 +318,31 @@ class CubeProgCLI:
 
     def get_version(self) -> str:
         """Return CLI version string."""
-        _, out, _ = self._run(["-v"])
+        """
+        Return CLI version without requiring a target connection.
+        Tries '--version' first, then '-h' as fallback.
+        """
+
+        # Try --version first
+        for args in (["--version"], ["-h"]):
+            try:
+                cp = subprocess.run(
+                    [self.cli_path] + args,
+                    capture_output=True,
+                    text=True,
+                    timeout=self.default_timeout,
+                    check=False,  # Don't raise on non-zero return
+                )
+            except subprocess.TimeoutExpired:
+                continue
+
+        out = (cp.stdout or "") + (cp.stderr or "")
         # CLI prints a banner; try to grab the version line.
         for line in out.splitlines():
-            if "STM32CubeProgrammer" in line and "version" in line.lower():
+            # Typical: "STM32CubeProgrammer v2.20.0"
+            if "STM32CubeProgrammer" in line and (" v" in line or "version" in line.lower()):
                 return line.strip()
-        return out.strip() or "Unknown version"
+        return "Unknown version"
 
     def list_probes(self) -> str:
         """List connected ST-LINK/ports (raw CLI output)."""
