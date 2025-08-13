@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stm32cubeprog"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python wrapper + CLI for STM32CubeProgrammer"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [{ name = "raj_cks" }]
