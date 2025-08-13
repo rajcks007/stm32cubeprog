@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stm32cubeprog"
+version = "0.1.0"
+description = "Python wrapper + CLI for STM32CubeProgrammer"
+readme = "README.md"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+dependencies = []
+
+[project.scripts]
+stm32cubeprog = "stm32cubeprog.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yourname/stm32cubeprog"
