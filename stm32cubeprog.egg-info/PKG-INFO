@@ -1,0 +1,297 @@
+Metadata-Version: 2.4
+Name: stm32cubeprog
+Version: 0.1.0
+Summary: Python wrapper + CLI for STM32CubeProgrammer
+Author: raj_cks
+Project-URL: Homepage, https://github.com/rajcks007/stm32cubeprog
+Project-URL: Repository, https://github.com/rajcks007/stm32cubeprog
+Project-URL: Issues, https://github.com/rajcks007/stm32cubeprog/issues
+Keywords: stm32,stm32cubeprogrammer,stlink,embedded,flashing,dfu
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Environment :: Console
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: System :: Hardware :: Hardware Drivers
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENCE
+Dynamic: license-file
+
+# STM32CubeProgrammer Python Wrapper
+
+A Python library **and** command-line tool for driving **STM32CubeProgrammer CLI** (`STM32_Programmer_CLI`) to flash, read, erase, reset, and configure STM32 MCUs—using a clean Python API.
+
+---
+
+## Requirements
+
+- **STM32CubeProgrammer** installed (includes `STM32_Programmer_CLI`)
+- **Python 3.8+**
+- `STM32_Programmer_CLI` available via one of:
+  - In your **PATH**
+  - Environment variable: `STM32CUBEPRG_CLI=/full/path/to/STM32_Programmer_CLI[.exe]`
+  - Passed explicitly as `--cli` (CLI) or `cli_path="..."` (library)
+
+> The wrapper auto-detects the CLI on Windows/macOS/Linux, including Windows Registry lookup and user-local installs.
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/rajcks007/stm32cubeprog.git
+cd stm32cubeprog
+# No extra deps needed (stdlib only)
+```
+
+If you plan to reuse it elsewhere, you can `pip install -e .` after adding a minimal `pyproject.toml`, but that’s optional.
+
+---
+
+## Working with Multiple Programmers
+
+If you have more than one ST-LINK or other supported probe connected, you can select which one to use by **serial number** or **index**.
+
+## Getting serial numbers programmatically
+```python
+import re
+prog = CubeProgCLI()
+out = prog.list_probes()
+sns = re.findall(r"ST-LINK SN\s*:\s*([0-9A-F]+)", out)
+print("ST-LINK SN :", sns)
+```
+Example output:
+- ST-LINK SN  : 57FF6F067186535460351387
+- ST-LINK SN  : 066EFF303451897067120842
+
+## Usage as a Library
+
+```python
+from stm32cubeprog_wrapper import CubeProgCLI
+
+# Create the programmer (auto-detects STM32_Programmer_CLI)
+prog = CubeProgCLI()
+
+# 1) Flash firmware (BIN/HEX/ELF) at 0x08000000, verify + reset
+prog.flash_firmware(
+    "firmware.bin",
+    address=0x08000000,
+    verify=True,
+    reset=True,
+    port="SWD",
+    freq=4000,      # kHz
+    on_progress=lambda pct, _line: print(f"{pct}%"),
+    on_log=lambda stream, line: print(f"[{stream}] {line}"),
+)
+
+# 2) Read memory (4 KB) to a file
+prog.read_memory(
+    address=0x08000000,
+    size=4096,
+    out_file="dump.bin",
+    file_type="bin",  # or "hex"
+    port="SWD",
+    freq=4000,
+)
+
+# 3) Erase (all/bank/sector)
+prog.erase(scope="all", port="SWD", freq=4000)
+# prog.erase(scope="bank", bank=1, port="SWD")
+# prog.erase(scope="sector", sector=2, port="SWD")
+
+# 4) Reset target (software by default; pass sw=False for hardware reset)
+prog.reset(port="SWD", freq=4000)       # software reset
+prog.reset(sw=False, port="SWD")        # hardware reset
+
+# 5) Info helpers
+print(prog.get_version())       # STM32CubeProgrammer version banner
+print(prog.list_probes())       # Connected ST-LINKs/ports
+print(prog.read_device_info())  # Device info / option bytes
+
+# 6) Option bytes (key=value pairs)
+prog.write_option_bytes(["RDP=0xAA", "nWRP=0x0"],
+                         port="SWD"
+                        )
+
+# 7) Set RDP level (0|1|2) (Readout Protection)
+prog.set_rdp(level="0", port="SWD")   # 0 = no protection
+prog.set_rdp(level="1", port="SWD")   # 1 = read protected
+prog.set_rdp(level="2", port="SWD")   # 2 = full lock
+
+# 8) Choose by serial number
+prog.flash_firmware(
+    "firmware.bin",
+    address=0x08000000,
+    port="SWD", freq=4000,
+    sn="57FF6F067186535460351387",
+)
+
+# 9) choose by index
+prog.flash_firmware(
+    "firmware.bin",
+    address=0x08000000,
+    port="SWD", freq=4000,
+    index=1,
+)
+
+# 10) Flashing multiple boards (sequentially)
+serials = ["57FF6F067186535460351387", "066EFF303451897067120842"]
+for sn in serials:
+    prog.flash_firmware("firmware.bin", 0x08000000, port="SWD", freq=4000, sn=sn)
+
+# 11) Flashing multiple boards in parallel
+import threading
+
+serials = ["57FF6F067186535460351387", "066EFF303451897067120842"]
+
+def flash_one(sn):
+    CubeProgCLI().flash_firmware("firmware.bin", 0x08000000, port="SWD", freq=4000, sn=sn)
+
+threads = [threading.Thread(target=flash_one, args=(sn,)) for sn in serials]
+[t.start() for t in threads]
+[t.join() for t in threads]
+
+```
+
+### Connection options you can pass (as keyword args)
+- `port="SWD" | "JTAG" | "USBx" | "UARTx"`
+- `freq=4000` (kHz for SWD/JTAG)
+- `mode="hotplug" | "underreset" | ...`
+- `reset_mode="swrst" | "hwrst"`
+- `index=<probe_index>` or `sn="<stlink_serial>"`
+- UART: `baud=115200`, `parity="even"`, `stopbits=1`
+
+---
+
+## How to Use (Quick Start)
+
+1. **Install STM32CubeProgrammer** from ST.
+2. Connect your **ST-LINK** and target board.
+3. Put your firmware at a known path, e.g. `firmware.bin`.
+4. Pick the correct **flash start address** for your MCU (commonly `0x08000000`).
+5. Use the **library** (Python script) or the **CLI** (terminal) examples below.
+
+---
+
+## Usage as a CLI Tool
+
+Run the script directly:
+
+```bash
+python stm32cubeprog_wrapper.py <command> [options]
+```
+
+Common global options (append to any command):
+- `--cli "C:\Path\to\STM32_Programmer_CLI.exe"`  (override autodetect)
+- `--port SWD` `--freq 4000` `--mode hotplug` `--index 0` `--sn XXXXXX`
+- `--timeout 300` `--no-live` (disable live console output)
+
+### Commands
+
+- `version` — Show STM32CubeProgrammer CLI version
+- `list` — List connected probes/ports
+- `flash <file> <address> [--type bin|hex|elf] [--no-verify] [--no-reset]`
+- `read <address> <size> <out> [--type bin|hex]`
+- `erase <all|bank|sector> [--bank N] [--sector N]`
+- `reset [--hard]`
+- `info` — Device info/option bytes (raw)
+- `ob <KV...>` — Write option bytes (e.g., `RDP=0xAA nWRP=0x0`)
+- `rdp <0|1|2>` — Set Readout Protection level
+
+---
+
+## Listing available probes (CLI)
+```bash
+python stm32cubeprog_wrapper.py list
+```
+Example output:
+- ST-LINK SN  : 57FF6F067186535460351387
+- ST-LINK SN  : 066EFF303451897067120842
+
+## Examples (CLI)
+
+**By serial number (recommended for stability):**
+```bash
+python stm32cubeprog_wrapper.py flash firmware.bin 0x08000000 --port SWD --freq 4000 --sn Serial_numbe (e.g 57FF6F067186535460351387)
+```
+
+**By index:**
+```bash
+python stm32cubeprog_wrapper.py flash firmware.bin 0x08000000 --port SWD --freq 4000 --index 1
+```
+
+### Flash a binary at 0x08000000 (verify + reset)
+```bash
+python stm32cubeprog_wrapper.py flash firmware.bin 0x08000000 --port SWD --freq 4000
+```
+
+### Flash a HEX, no auto-reset
+```bash
+python stm32cubeprog_wrapper.py flash app.hex 0x08000000 --type hex --port SWD --no-reset
+```
+
+### Read 4 KB from flash to `dump.bin`
+```bash
+python stm32cubeprog_wrapper.py read 0x08000000 4096 dump.bin --port SWD --freq 4000
+```
+
+### Erase full flash
+```bash
+python stm32cubeprog_wrapper.py erase all --port SWD
+```
+
+### Hardware reset
+```bash
+python stm32cubeprog_wrapper.py reset --hard --port SWD
+```
+
+### Show connected probes
+```bash
+python stm32cubeprog_wrapper.py list
+```
+
+### Set RDP Level 1 (readout protected)
+```bash
+python stm32cubeprog_wrapper.py rdp 1 --port SWD
+```
+
+### Write option bytes
+```bash
+python stm32cubeprog_wrapper.py ob RDP=0xAA nWRP=0x0 --port SWD
+```
+
+---
+
+## Tips & Troubleshooting
+
+- **CLI not found**
+  Set env var or pass `--cli`:
+  ```bash
+  # Windows (PowerShell)
+  setx STM32CUBEPRG_CLI "C:\Program Files\STMicroelectronics\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe"
+
+  # Linux/macOS (bash)
+  export STM32CUBEPRG_CLI="/usr/local/STMicroelectronics/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+  ```
+- **Permissions (Linux/macOS)**
+  You might need `sudo` or proper udev rules for ST-LINK.
+- **Address correctness**
+  Ensure the flash base address matches your MCU (commonly `0x08000000`).
+- **DFU/UART modes**
+  Use `--port USBx` for DFU or `--port UARTx` with UART settings.
+- **Tips : For Device Selection**
+  ```bash
+  Prefer `sn=` over `index=` for consistent device selection.
+  Lower `freq` if you get connection issues.
+  You can attach `on_progress` and `on_log` callbacks to monitor each device individually.
+  ```
+---
+
+## License
+
+MIT License
+STM32CubeProgrammer and `STM32_Programmer_CLI` are © STMicroelectronics.
+
+---

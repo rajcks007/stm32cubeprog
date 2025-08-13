@@ -1,0 +1,2 @@
+[console_scripts]
+stm32cubeprog = stm32cubeprog.cli:main

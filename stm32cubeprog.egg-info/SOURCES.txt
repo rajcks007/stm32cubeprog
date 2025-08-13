@@ -1,0 +1,10 @@
+LICENCE
+README.md
+pyproject.toml
+stm32cubeprog/__init__.py
+stm32cubeprog/cli.py
+stm32cubeprog.egg-info/PKG-INFO
+stm32cubeprog.egg-info/SOURCES.txt
+stm32cubeprog.egg-info/dependency_links.txt
+stm32cubeprog.egg-info/entry_points.txt
+stm32cubeprog.egg-info/top_level.txt
