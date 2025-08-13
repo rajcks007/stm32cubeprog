@@ -6,14 +6,33 @@ build-backend = "setuptools.build_meta"
 name = "stm32cubeprog"
 version = "0.1.0"
 description = "Python wrapper + CLI for STM32CubeProgrammer"
-readme = "README.md"
-authors = [{ name = "Your Name", email = "you@example.com" }]
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [{ name = "raj_cks" }]
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
 dependencies = []
+keywords = ["stm32", "stm32cubeprogrammer", "stlink", "embedded", "flashing", "dfu"]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Environment :: Console",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: System :: Hardware :: Hardware Drivers",
+]
 
 [project.scripts]
 stm32cubeprog = "stm32cubeprog.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourname/stm32cubeprog"
+Homepage = "https://github.com/rajcks007/stm32cubeprog"
+Repository = "https://github.com/rajcks007/stm32cubeprog"
+Issues = "https://github.com/rajcks007/stm32cubeprog/issues"
+
+# Tell setuptools to include the package (non-src layout)
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["stm32cubeprog*"]
+exclude = ["tests*", "examples*"]

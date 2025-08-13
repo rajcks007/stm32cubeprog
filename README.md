@@ -20,8 +20,8 @@ A Python library **and** command-line tool for driving **STM32CubeProgrammer CLI
 ## Installation
 
 ```bash
-git clone https://github.com/stm32cubeprog-python.git
-cd stm32cubeprog-python
+git clone https://github.com/rajcks007/stm32cubeprog.git
+cd stm32cubeprog
 # No extra deps needed (stdlib only)
 ```
 
